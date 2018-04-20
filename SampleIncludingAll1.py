@@ -43,7 +43,7 @@ class CohesionExample2:
         return temp
 
     def c(self):
-        res = self.y / 2
+        res = self.x / 2
         res = res + self.y
         return res
 
