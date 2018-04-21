@@ -60,10 +60,15 @@ class CouplingExample1:
 
     def __init__(self):
         self.otherClass = CouplingExample2()
+        self.otherClass2 = CohesionExample2()
         pass
 
     def n1(self):
         self.otherClass.m1()
+        self.otherClass2.c()
+    def n2(self):
+        x=CouplingExample2.m2()
+        y=CohesionExample1.a()
 
 class CouplingExample2:
 
@@ -72,7 +77,8 @@ class CouplingExample2:
 
     def m1(self):
         pass
-
+    def m2(self):
+        pass
 class DepthOfInheritanceExample1(object):
 
     def __init__(self):

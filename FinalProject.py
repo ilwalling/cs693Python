@@ -1,5 +1,6 @@
 import ast
 import re
+from collections import deque
 #SampleIncludingAll1.py
 
 class reader(ast.NodeVisitor):
@@ -9,6 +10,29 @@ class reader(ast.NodeVisitor):
     def visit_Attribute(self,node):
         self.getAttr = node.attr
 
+class couplingReader(ast.NodeVisitor):
+    def __init__(self):
+        self.getName = deque()
+
+    @property
+    def name(self):
+        return '.'.join(self.getName)
+
+    def visit_Name(self,node):
+        if self.getName != deque():
+            self.getName.appendleft(node.id)
+
+    def visit_Attribute(self,node):
+        self.getName.appendleft(node.attr)
+        self.generic_visit(node)
+
+class ditReader(ast.NodeVisitor):
+    def __init__(self):
+        self.getBase = ''
+
+    def visit_ClassDef(self,node):
+        if (len(node.bases) == 1):
+            self.getBase = node.bases[0].id
 
 class finalProject:
 
@@ -72,7 +96,7 @@ class finalProject:
         for element in ast.walk(tree):
             if isinstance(element,ast.ClassDef):
                 classDefinitions = []
-                #classDefinitions.append(element.name)
+                classDefinitions.append(element.name)
                 for classNodes in element.body:
                     if isinstance(classNodes,ast.FunctionDef):
                         functionDefinitions = []
@@ -88,75 +112,83 @@ class finalProject:
                 masterList.append(classDefinitions)
 
         #combine lists if letters overlap
-        print(masterList)
+        print("LCOM4 \n----------")
         for i in range(len(masterList)):
-            print ("BREAK")
-            changed = False
             j = masterList[i]
-            while changed != True:
-                changed = False
-                for n in range(len(j)-1):
-                    k = j[n]
-                    k1 = j[n+1]
-                    for l in range(len(k)):
-                            if k[l] in k1:
-                                k[n] = k + k1
-                                changed = True
-                    print(k)
-                
+            lcom = len(j)-1
+            for n in range(1,len(j)-1):
+                for n1 in range(n+1,len(j)):
+                   if (set(j[n]) & set(j[n1]) != set()):
+                       lcom -= 1
+            print(j[0] + " = " + str(lcom))
+
+
 
     def cbo(self):
         tree = ast.parse(open(self.userFile).read())
+        print("CBO \n----------")
         masterList = []
+        foundClasses = []
         # makes a list of all function definitions for specified for each class
         for element in ast.walk(tree):
             if isinstance(element, ast.ClassDef):
-                classDefinitions = []
-                #classDefinitions.append(element.name)
+                varDict = {}
+                varList = []
+                masterList.append(element.name)
                 for classNodes in element.body:
                     if isinstance(classNodes, ast.FunctionDef):
-                        functionDefinitions = []
-                        if classNodes.name != '__init__':
-                            if functionDefinitions != '':
-                                functionDefinitions.append(classNodes.name)
-                                for node in classNodes.body:
-                                    visitAttr = reader()
-                                    visitAttr.visit(node)
-                                    if visitAttr.getAttr != '':
-                                        functionDefinitions.append(visitAttr.getAttr)
-                                classDefinitions.append(functionDefinitions)
-                masterList.append(classDefinitions)
 
-        # combine lists if letters overlap
-        print(masterList)
-        for i in range(len(masterList)):
-            print ("BREAK")
-            changed = False
-            j = masterList[i]
+                        for node in classNodes.body:
+                            visitAttr = couplingReader()
+                            visitAttr.visit(node)
+                            if classNodes.name == '__init__' and visitAttr.name != '':
+                                if not visitAttr.name.startswith('self.'):
+                                    varDict[visitAttr.name.split('.')[2]] = visitAttr.name.split('.')[0]
+                            elif visitAttr.name != '':
+                                varList.append(visitAttr.name)
+                otherClassList = []
+                for varNames in varList:
+                    splitVarNames = varNames.split('.')
+                    if splitVarNames[0] != 'self':
+                        otherClassList.append(splitVarNames[0])
+                    if varDict != {}:
+                        for key,value in varDict.items():
+                            if key in splitVarNames:
+                                otherClassList.append(value)
+                print(otherClassList)
+                foundClasses.append(otherClassList)
+
+        for index in range(len(masterList)):
+            for index2 in range(len(masterList)):
+                CBO=0
+                for className in foundClasses[index2]:
+                    if className == masterList[index]:
+                        CBO += 1
+                print(masterList[index] + " compared to " + masterList[index2] + " cbo is " + str(CBO))
+
 
     def dit(self):
         print("DIT \n----------")
-        classNames = []
-        classChildren = []
-        while self.line:
-            stringLine = self.line.strip()
-            if stringLine.startswith('class'):
-                matchedClass = re.search('\ [a-zA-Z0-9]+', self.line)
-                classNames.append(matchedClass.group(0).strip())
-                index = 0
-                for x in self.line:
-                    if x == '(':
-                        startSubstring = index + 1
-                    if x == ')':
-                        endSubstring = index
-                        allChildren = self.line[startSubstring:endSubstring]
-                        allChildren = allChildren.split(',')
-                        for each in allChildren:
-                            classChildren.append(each)
-                    index += 1
-            self.line = next(self.file, None)
+        tree = ast.parse(open(self.userFile).read())
+        ditList = {}
+        resultDict = {}
+        for element in ast.walk(tree):
+            if isinstance(element, ast.ClassDef):
+                resultDict[element.name]=0
+                visitAttr = ditReader()
+                visitAttr.visit(element)
+                if (visitAttr.getBase !=''):
+                    ditList[element.name] = visitAttr.getBase
+        for key,value in ditList.items():
+            resultDict[key] += 1
+            newKey = value
+            while newKey in ditList.keys():
+                resultDict[key] +=1
+                newKey = ditList[newKey]
+        for key,value in resultDict.items():
+            print(key)
+            print(value)
 
-#THIS IS NOT DONE
 
     def noc(self):
         print("NOC \n----------")
@@ -180,6 +212,7 @@ class finalProject:
                     index += 1
 
             self.line = next(self.file, None)
+
         for aClass in classNames:
             childCounter = 0
             for aChild in classChildren:
@@ -213,8 +246,8 @@ f = finalProject()
 f.parse_input()
 #f.loc()
 #f.lcom4()
-f.cbo()
-#f.dit()
+#f.cbo()
+f.dit()
 #f.noc()
 #f.wmc()
 
