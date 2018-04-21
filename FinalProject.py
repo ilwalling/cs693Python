@@ -244,10 +244,18 @@ class finalProject:
 
 f = finalProject()
 f.parse_input()
-#f.loc()
-#f.lcom4()
-#f.cbo()
-f.dit()
-#f.noc()
-#f.wmc()
+
+metricToRun = input("Which metric to run? \n(0-LOC, 1-LCOM4, 2-CBO, 3-DIT, 4-NOC, 5-WMC)")
+if metricToRun == "0":
+    f.loc()
+if metricToRun == "1":
+    f.lcom4()
+if metricToRun == "2":
+    f.cbo()
+if metricToRun == "3":
+    f.dit()
+if metricToRun == "4":
+    f.noc()
+if metricToRun == "5":
+    f.wmc()
 
